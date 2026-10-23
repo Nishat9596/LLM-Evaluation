@@ -1,0 +1,29 @@
+name: LLM Evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Unit tests for the evaluator
+        run: pytest -v
+      - name: Evaluate current release (v1) – block on high or critical failures
+        run: python evaluate.py --responses data/responses_v1.json --report reports/v1.md --fail-on high
+      - name: Compare new candidate (v2) with v1 – report only
+        run: python evaluate.py --responses data/responses_v2.json --baseline data/responses_v1.json --report reports/v2_vs_v1.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-reports
+          path: reports/
