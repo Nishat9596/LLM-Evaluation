@@ -1,0 +1,32 @@
+name: Daily test log
+
+# After each scheduled (or manual) run of "LLM Evaluation", append the result
+# to TEST-HISTORY.md so the repo keeps a day-by-day record of test runs.
+on:
+  workflow_run:
+    workflows: ["LLM Evaluation"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  log:
+    if: github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append today's result to TEST-HISTORY.md
+        env:
+          RESULT: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          if [ ! -f TEST-HISTORY.md ]; then
+            printf '# Test run history\n\nThe suite runs every day in GitHub Actions. Each run is recorded here.\n\n| Date (UTC) | Result | Run |\n|---|---|---|\n' > TEST-HISTORY.md
+          fi
+          echo "| $(date -u +'%Y-%m-%d %H:%M') | ${RESULT} | [view run](${RUN_URL}) |" >> TEST-HISTORY.md
+          git config user.name "Nishat9596"
+          git config user.email "317343511+Nishat9596@users.noreply.github.com"
+          git add TEST-HISTORY.md
+          git commit -m "Log daily test run: ${RESULT} ($(date -u +%F))"
+          git push
